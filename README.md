@@ -65,7 +65,7 @@ Request body example:
     "iso_currency_code": "USD",
     "type": "debit",
     "reason": "refund",
-    "amount": 1000 //Сумма в минимульных единицах для валюты (например копейки или центы)
+    "amount": 1000 //Сумма в минимальных единицах для валюты (например копейки или центы)
 }
 ```
 Response (Status 200)
