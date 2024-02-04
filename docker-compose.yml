@@ -1,0 +1,72 @@
+---
+version: '3.7'
+
+x-php-environments: &php-environments
+    PHP_DATE_TIMEZONE: ${PHP_DATE_TIMEZONE:-UTC}
+
+x-php-container: &php-container
+    user: ${DEV_LOCAL_UID:-1000}:${DEV_LOCAL_GID:-1000}
+    volumes:
+        - .:/var/www/vigrom
+    depends_on:
+        - mysql
+
+services:
+    mysql:
+        image: mysql:8.3.0
+        environment:
+            MYSQL_DATABASE: vigrom
+            MYSQL_ROOT_PASSWORD: 123
+        command: [mysqld, --socket=/tmp/mysql.sock, --default-authentication-plugin=mysql_native_password]
+        volumes:
+            - ~/SharedVolumes/vigrom:/var/lib/mysql
+            - ./docker/mysql/custom.cnf:/etc/mysql/conf.d/custom.cnf
+        expose:
+            - 3306
+        ports:
+            - "3306:3306"
+        profiles:
+            - web
+
+    app:
+        <<: *php-container
+        environment:
+            <<: *php-environments
+            XDEBUG_CONFIG: "idekey=PHPSTORM client_host=host.docker.internal client_port=9003 discover_client_host=false" # `$ ip addr` - IP докера, для windows (host.docker.internal)
+            XDEBUG_MODE: 'debug' # https://xdebug.org/docs/all_settings#mode
+        build:
+            dockerfile: docker/php/Dockerfile
+            args:
+                WEB_USER_ID: 1000 # `$ id -u`
+                WEB_USER_NAME: developer # `$ whoami`
+                WEB_GROUP_ID: 1000
+                WEB_GROUP_NAME: developer
+                PHP_IMAGE_NAME: vigrom
+        volumes:
+            - ~/SharedVolumes/composer:/composer
+            - ./:/var/www/vigrom
+        profiles:
+            - web
+
+    nginx:
+        image: nginx:1.25.3-alpine
+        environment:
+            NGINX_FASTCGI_PASS: app:9000
+            NGINX_WEB_DOMAIN: vigrom.localhost
+            NGINX_WORKER_PROCESS: 2 # int or "auto"
+            NGINX_ERROR_LOG_LEVEL: "warn"
+            NGINX_WORKER_RLIMIT_NOFILE: 4096
+            NGINX_EVENTS_WORKER_CONNECTIONS: 1024
+            NGINX_ACCESS_LOG_FORMAT: main
+        depends_on:
+            - app
+        volumes:
+            - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./docker/nginx/templates:/etc/nginx/templates:ro
+            - .:/var/www/vigrom
+        expose:
+            - 80
+        ports:
+            - "80:80"
+        profiles:
+            - web

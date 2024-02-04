@@ -1,0 +1,14 @@
+user nginx;
+
+worker_processes  ${NGINX_WORKER_PROCESS};
+
+error_log  /var/log/nginx/error.log ${NGINX_ERROR_LOG_LEVEL};
+pid        /var/run/nginx.pid;
+
+worker_rlimit_nofile ${NGINX_WORKER_RLIMIT_NOFILE};
+
+events {
+    worker_connections  ${NGINX_EVENTS_WORKER_CONNECTIONS};
+    use epoll;
+    multi_accept on;
+}
